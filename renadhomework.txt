@@ -1,0 +1,244 @@
+////Q1
+
+package com.example.springweek3day2.controoller;
+
+import com.example.springweek3day2.model.User;
+import com.example.springweek3day2.servies.UserServies;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.Errors;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("api/v1/user")
+public class UserControoller {
+        private final UserServies userServies;
+
+        @GetMapping
+        public ResponseEntity<List<User>> getUser(){
+            return ResponseEntity.status(200).body(userServies.getUser());
+        }
+
+   @GetMapping("{id}")
+   public ResponseEntity<User>getUserByEmail(@PathVariable String email){
+        return ResponseEntity.status(200).body(userServies.getUserByEmail(email));
+    }
+
+    @GetMapping("{email}")
+    public ResponseEntity<User>getUserById(@PathVariable Integer id){
+        return ResponseEntity.status(200).body(userServies.getUserById(id));
+    }
+
+
+    @GetMapping("{age}")
+    public ResponseEntity<List<User>>getUserByAge(@PathVariable Integer age){
+        return ResponseEntity.status(200).body(userServies.getUserByAge(age));
+    }
+
+    @GetMapping("{role}")
+    public ResponseEntity<List<User>>CountAllUserByrole(@PathVariable String role){
+        return ResponseEntity.status(200).body(userServies.countAllByRole(role));
+    }
+
+    @GetMapping("{username}/{password}")
+    public ResponseEntity<Optional<User>>CheckUsernameAndPassword(@PathVariable String username, @PathVariable String password){
+        return ResponseEntity.status(200).body(userServies.login(username,password));
+    }
+
+    @GetMapping("{id}/{Greatejoiningyear}")
+    public ResponseEntity<List<User>>getUserByIdAndGreatJoiningyear(@PathVariable Integer id, @PathVariable String joiningyear){
+        return ResponseEntity.status(200).body(userServies.getUserByEquleJoiningYear(id,joiningyear));
+    }
+    @GetMapping("{id}/{equlejoiningyear}")
+    public ResponseEntity<List<User>>getUserByIdAndEqualeJoiningyear(@PathVariable Integer id, @PathVariable String joiningyear){
+        return ResponseEntity.status(200).body(userServies.getAllByIdAndJoiningYearEquals(id,joiningyear));
+    }
+
+    @GetMapping("{age}/{joiningyear}")
+    public ResponseEntity<List<User>>getUserByAgeAndEquleJoiningYear(@PathVariable Integer age, @PathVariable String joiningyear){
+        return ResponseEntity.status(200).body(userServies.getUserByAgeAndEquleJoiningYear(age,joiningyear));
+    }
+
+    @PutMapping("/{newpassword}")
+    public ResponseEntity updatePassword(@PathVariable String newpassword, @PathVariable Integer id){
+        userServies.NewPassword(newpassword,id);
+        return ResponseEntity.status(200).body(" Update password !");
+
+    }
+
+        @PostMapping
+        public ResponseEntity addUser(@RequestBody @Valid User user , Errors errors){
+            if(errors.hasErrors()){
+                return ResponseEntity.status(400).body(errors.getFieldError().getDefaultMessage());}
+            userServies.addUser(user);
+            return ResponseEntity.status(200).body("user added!");
+
+        }
+        @PutMapping("/{id}")
+        public ResponseEntity updateUser(@RequestBody @Valid User user, @PathVariable Integer id,Errors errors){
+            if(errors.hasErrors()){
+                return ResponseEntity.status(400).body(errors.getFieldError().getDefaultMessage());}
+            userServies.updateUser(user,id);
+            return ResponseEntity.status(200).body("Update user !");
+
+        }
+        @DeleteMapping
+        public ResponseEntity deletUser(@PathVariable Integer id){
+            userServies.removeUser(id);
+            return ResponseEntity.status(200).body("delet user");
+        }
+
+
+    }
+
+
+
+
+/////////
+
+
+package com.example.springweek3day2.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+@AllArgsConstructor @NoArgsConstructor @Data
+
+@Entity
+public class User {
+    @Id
+    private Integer id;
+    @Column(nullable = true)
+    private String username;
+    private String password;
+    private String email;
+    private Integer age;
+    private String role;
+    private String joiningYear;
+
+}
+
+//////
+
+package com.example.springweek3day2.repoistory;
+
+import com.example.springweek3day2.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface UserRepoistory extends JpaRepository<User,Integer> {
+   User findUserById(Integer id);
+    User findUserByEmail(String email);
+   List <User>findUserByAgeGreaterThan(Integer age);
+
+    List <User> countAllByRole(String role);
+
+   @Query("select u from User u where u.username = :username and u.password = :password")
+  Optional<User> login(@Param("username")String username, @Param("password")String password);
+
+   List<User> findAllByIdAndJoiningYearEquals(Integer id,String joiningyear);
+  List<User> findAllByIdAndJoiningYearGreaterThan(Integer id,String joiningyear);
+  List<User> findAllByAgeEqualsAndJoiningYearIsAfter(Integer age,String joiningyear);
+}
+
+
+////////
+
+
+package com.example.springweek3day2.servies;
+
+import com.example.springweek3day2.model.User;
+import com.example.springweek3day2.repoistory.UserRepoistory;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class UserServies {
+    private final UserRepoistory userRepoistory;
+
+    public List<User> getUser() {
+        return userRepoistory.findAll();
+    }
+
+    public void addUser(User user) {
+
+        userRepoistory.save(user);
+    }
+
+    public void updateUser(User user, Integer id) {
+        if(userRepoistory.countAllByRole(user.getRole()).equals("admin")) {
+            User olduser = userRepoistory.findById(id).get();
+            olduser.setId(user.getId());
+            olduser.setUsername(user.getUsername());
+            olduser.setPassword(user.getPassword());
+            olduser.setAge(user.getAge());
+            olduser.setJoiningYear(user.getJoiningYear());
+            olduser.setEmail(user.getEmail());
+            olduser.setRole(user.getRole());
+            userRepoistory.save(olduser);
+        }
+    }
+
+    public void removeUser(Integer id) {
+
+        userRepoistory.deleteById(id);
+    }
+
+    public User getUserById(Integer id) {
+        return userRepoistory.findUserById(id);
+    }
+
+    public User getUserByEmail(String email) {
+        return userRepoistory.findUserByEmail(email);
+    }
+
+    public List<User> getUserByAge(Integer age) {
+        return userRepoistory.findUserByAgeGreaterThan(age);
+    }
+
+    public List<User> countAllByRole(String role) {
+        return userRepoistory.countAllByRole(role);
+    }
+
+    public Optional<User> login(String username, String password) {
+       return userRepoistory.login(username,password);
+    }
+    public User NewPassword(String newpassword,Integer id){
+        User oldpassword = userRepoistory.findById(id).get();
+        oldpassword.setPassword(newpassword);
+         return userRepoistory.save(oldpassword) ;
+    }
+
+
+    public List<User> getAllByIdAndJoiningYearEquals(Integer id,String joiningyear){
+        return userRepoistory.findAllByIdAndJoiningYearEquals(id,joiningyear);
+    }
+    public List<User> getUserByEquleJoiningYear(Integer id,String joiningyear){
+return userRepoistory.findAllByIdAndJoiningYearGreaterThan(id,joiningyear);
+    }
+
+  public List<User> getUserByAgeAndEquleJoiningYear(Integer age,String joiningyear){
+  return userRepoistory.findAllByAgeEqualsAndJoiningYearIsAfter(age,joiningyear);
+    }
+
+}
+
+
